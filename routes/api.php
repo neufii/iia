@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\IndicatorController;
+use App\Http\Controllers\LearnerController;
 use App\Http\Controllers\QuestionInstanceController;
 
 /*
@@ -17,7 +18,14 @@ use App\Http\Controllers\QuestionInstanceController;
 |
 */
 
-Route::resource('indicators',IndicatorController::class);
+Route::resource('indicators',IndicatorController::class)->except([
+    'create' ,'edit'
+]);
+
+Route::resource('learners',LearnerController::class)->except([
+    'create' ,'edit'
+]);
+
 Route::get('indicators/{indicatorId}/get-question',[QuestionInstanceController::class, 'getQuestion']);
 
 Route::put('questions/{questionId}/submit', [QuestionInstanceController::class, 'submit']);

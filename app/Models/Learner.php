@@ -26,6 +26,20 @@ class Learner extends Model
 
     //function
     public function getRating($indicatorId){
-        return $this->learningIndicators()->where('id',$indicatorId)->first()->pluck('rating');
+        if(!$this->learningIndicators()->where('indicator_id',$indicatorId)->first()){
+            //learner is new to this indicator
+            $this->learningIndicators()->attach(Indicator::findOrFail($indicatorId),['rating' => 0 ,'total_attempts' => 0]);
+        }
+
+        return $this->learningIndicators()->where('indicator_id',$indicatorId)->first()->pivot->rating;
+    }
+
+    public function getTotalAttempts($indicatorId){
+        if(!$this->learningIndicators()->where('indicator_id',$indicatorId)->first()){
+            //learner is new to this indicator
+            $this->learningIndicators()->attach(Indicator::findOrFail($indicatorId),['rating' => 0 ,'total_attempts' => 0]);
+        }
+
+        return $this->learningIndicators()->where('indicator_id',$indicatorId)->first()->pivot->total_attempts;
     }
 }

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Modules\ModuleManager;
+
 class QuestionInstance extends Model
 {
     use HasFactory;
@@ -20,27 +22,48 @@ class QuestionInstance extends Model
         ->withTimestamps();
     }
 
+    public function generator(){
+        return $this->belongsTo('App\Models\Module', 'id');
+    }
+
     public function statistic(){
-        return $this->hasMany('App\Models\QuestionStat', 'id');
+        return $this->hasOne('App\Models\QuestionStat', 'id');
+    }
+
+    //scope
+    public function scopeRatingBetween($query,$min,$max){
+        return $query->whereHas('statistic',function ($q) use ($min, $max){
+            return $q->where('rating','>=',$min)->where('rating','<=',$max);
+        });
+    }
+
+    //accessor
+    public function getRatingAttribute(){
+        return $this->statistic()->first()->rating;
+    }
+
+    public function getTotalAttemptsAttribute(){
+        return $this->statistic()->first()->total_attempts;
     }
 
     //function
-    public static function generate($indicatorId, $preferredLevel=null){
-        $generated_question = ModuleManager::runProcess('GENERATOR', getenv('ENABLE_GENERATOR_PREPROCESS'), getenv('ENABLE_GENERATOR_POSTPROCESS'),true,$indicatorId, $preferredLevel);
-        
-        if(!$generated_question){
-            //nothing return from generator
+    public static function generate($indicator, $preferredLevel=null, $testGenerator = null){
+        $generator = $testGenerator ? $testGenerator : $indicator->compatibleModules()->generator()->active()->latest()->first();
+        if(isset($generator)){
+            $generated_question = ModuleManager::runProcess($generator,$indicator->id, $preferredLevel);
+        }
+        if(!isset($generator) || !isset($generated_question)){
+            //no generator or nothing return from generator
             return null;
         }
-
-        $questionArr = json_decode($generated_question['question'],true);
         
         //store to database
         $question = new QuestionInstance();
-        $question->question = json_encode($questionArr);
+        $question->question = $generated_question['question'];
         $question->answer = $generated_question['answer'];
         $question->solution = $generated_question['solution'];
-        $question->indicator_id = $indicatorId;
+        $question->indicator_id = $indicator->id;
+        $question->generator_id = $generator->id;
         $question->save();
 
         $stat = new QuestionStat();
@@ -50,23 +73,146 @@ class QuestionInstance extends Model
         return $question;
     }
 
-    public static function selectQuestion($learner, $indicatorId, $excludeHistory=true, $preferredLevel=null){
-        $probCorrect = 0;
-        while($probCorrect<= 0.5 || $probCorrect >= 1){
-            $probCorrect = stats_rand_gen_normal(0.75,0.1);
+    public static function selectQuestion($learner, $indicator, $excludeHistory=true, $preferredLevel=null){
+        $selector = $indicator->compatibleModules()->selector()->active()->latest()->first();
+        if(isset($selector)){
+            $customInstance = ModuleManager::runProcess($selector, $learner->id, $indicator->id, $excludeHistory, $preferredLevel);
         }
-        $targetRating = $learner->getRating($indicatorId) - log($probCorrect/(1-$probCorrect));
-        //generate only when run out of question
         
-        return ['targetRating'=>$targetRating, 'questionInstance' => $TODO];
+        if(isset($customInstance)){
+            $selectedInstance = $customInstance['questionInstanceId'] ? QuestionInstance::find($customInstance['questionInstanceId']) : null;
+            $targetLevel = $customInstance['targetLevel'] ? $customInstance['targetLevel'] : null;
+        }
+        else{
+            //no selector or nothing return from selector, use default selecting algorithm
+            if($excludeHistory){
+                $history = $learner->history()->where('indicator_id',$indicator->id)->pluck('question_id');
+            }
+            else{
+                $history = $learner->history()->where('indicator_id',$indicator->id)->orderByDesc('history.created_at')->take(20)->pluck('question_id');
+            }
+
+            //get only question from active generators
+            $generatorsId = $indicator->compatibleModules()->generator()->active()->get()->pluck('id');
+            $query = QuestionInstance::where('indicator_id',$indicator->id)->whereNotIn('id',$history)->whereIn('generator_id',$generatorsId);
+            $allQuestionIds = QuestionInstance::where('indicator_id',$indicator->id)->whereIn('generator_id',$generatorsId)->pluck('id');
+
+            if(isset($preferredLevel)){
+                $median = QuestionStat::whereIn('question_id',$allQuestionIds)->get()->median('rating');
+                switch($preferredLevel){
+                    case 1:{
+                        $min = QuestionStat::whereIn('question_id',$allQuestionIds)->min('rating');
+                        $max = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','<',$median)->get()->median('rating');
+                        $query = $query->ratingBetween($min,$max);
+                        break;
+                    }
+                    case 2:{
+                        $min = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','<',$median)->get()->median('rating');
+                        $query = $query->ratingBetween($min,$median);
+                        break;
+                    }
+                    case 3:{
+                        $max = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','>',$median)->get()->median('rating');
+                        $query = $query->ratingBetween($median,$max);
+                        break;
+                    }
+                    case 4:{
+                        $max = QuestionStat::whereIn('question_id',$allQuestionIds)->max('rating');
+                        $min = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','>',$median)->get()->median('rating');
+                        $query = $query->ratingBetween($min,$max);
+                        break;
+                    }
+                }
+                $selectedInstance = $query->inRandomOrder()->first();
+                $targetLevel = $preferredLevel;
+            }
+            else{
+                $probCorrect = 0;
+                while($probCorrect<= 0.5 || $probCorrect >= 1){
+                    $x = mt_rand()/mt_getrandmax();
+                    $y = mt_rand()/mt_getrandmax();
+                    $probCorrect =  sqrt(-2*log($x))*cos(2*pi()*$y)*0.1 + 0.75;
+                }
+                $targetRating = $learner->getRating($indicator->id) - log($probCorrect/(1-$probCorrect));
+                $collection = $query->get();
+                $upperInstance = QuestionInstance::where('indicator_id',$indicator->id)
+                    ->whereNotIn('id',$history)
+                    ->whereIn('generator_id',$generatorsId)
+                    ->whereHas('statistic',function($q) use($targetRating){
+                        $q->where('rating','>',$targetRating);
+                    })->with('statistic')->get()->sortBy('statistic.rating')->first();
+                $lowerInstance = QuestionInstance::where('indicator_id',$indicator->id)
+                    ->whereNotIn('id',$history)
+                    ->whereIn('generator_id',$generatorsId)
+                    ->whereHas('statistic',function($q) use($targetRating){
+                        $q->where('rating','<=',$targetRating);
+                    })->with('statistic')->get()->sortByDesc('statistic.rating')->first();
+
+                if(!isset($upperInstance)){
+                    $selectedInstance = $lowerInstance;
+                }
+                else if(!isset($lowerInstance)){
+                    $selectedInstance = $upperInstance;
+                }
+                else{
+                    $selectedInstance = abs($upperInstance->rating - $targetRating) < abs($lowerInstance->rating - $targetRating) ? $upperInstance : $lowerInstance;
+                }
+
+                $selectedInstance = $query->whereHas('statistic',function($q) use($selectedInstance){
+                    $q->where('rating',$selectedInstance->rating);
+                })->inRandomOrder()->first();
+                $targetLevel = null;
+                
+                if(!isset($selectedInstance)){
+                    //no instance selected, find target level for generator.
+                    if(empty($allQuestionIds->toArray()) || !isset($allQuestionIds)){
+                        //no question in question bank, generate level 2 question
+                        $targetLevel = 2;
+                    }
+                    else{
+                        $median = QuestionStat::whereIn('question_id',$allQuestionIds)->get()->median('rating');
+
+                        if($targetRating > $median){
+                            $higherMedian = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','>=',$median)->get()->median('rating');
+                            $targetLevel = $targetRating > $higherMedian ? 4:3;
+                        }
+                        else{
+                            $lowerMedian = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','<=',$median)->get()->median('rating');
+                            $targetLevel = $targetRating > $lowerMedian ? 2:1;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return ['targetLevel'=>$targetLevel, 'questionInstance' => $selectedInstance];
+    }
+
+    public function getDistance($questionInstance){
+        $calculator = $this->indicator()->first()->compatibleModules()->distanceCalculator()->active()->latest()->first();
+        if(!isset($calculator)){
+            //no calculator
+            return;
+        }
+        return ModuleManager::runProcess($calculator, $this->question, $questionInstance->question);
     }
 
     public function getDisplayableQuestion(){
-        return ModuleManager::runProcess('QUESTION_DISPLAY', getenv('ENABLE_QUESTION_DISPLAY_PREPROCESS'), getenv('ENABLE_QUESTION_DISPLAY_POSTPROCESS'), false, $this->question);
+        $questionDisplay = $this->indicator()->first()->compatibleModules()->questionDisplay()->active()->latest()->first();
+        if(!isset($questionDisplay)){
+            //no question display
+            return;
+        }
+        return ModuleManager::runProcess($questionDisplay, $this->question);
     }
 
     public function getDisplayableSolution(){
-        return ModuleManager::runProcess('SOLUTION_DISPLAY', getenv('ENABLE_SOLUTION_DISPLAY_PREPROCESS'), getenv('ENABLE_SOLUTION_DISPLAY_POSTPROCESS'), false, $this->solution);
+        $solutionDisplay = $this->indicator()->first()->compatibleModules()->solutionDisplay()->active()->latest()->first();
+        if(!isset($solutionDisplay)){
+            //no solution display
+            return;
+        }
+        return ModuleManager::runProcess($solutionDisplay, $this->solution);
     }
 
     public function check($learnerAnswer){
@@ -75,27 +221,48 @@ class QuestionInstance extends Model
         }
 
         $correctAnswer =  $this->answer;
-        $moduleOutput = ModuleManager::runProcess('ANSWER_CHECKER', getenv('ENABLE_ANSWER_CHECKER_PREPROCESS'), getenv('ENABLE_ANSWER_CHECKER_POSTPROCESS'), false, $learnerAnswer, $correctAnswer);
 
-        return filter_var($moduleOutput, FILTER_VALIDATE_BOOLEAN);
+        $checker = $this->indicator()->first()->compatibleModules()->checker()->active()->latest()->first();
+        if(!isset($checker)){
+            //no answer checker
+            return;
+        }
+        $isCorrect = ModuleManager::runProcess($checker, $learnerAnswer, $correctAnswer);
+
+        return filter_var($isCorrect, FILTER_VALIDATE_BOOLEAN);
     }
 
-    public function addHistory($learner, $learnerAnswer, $timeUsed){
-        if($learner){
+    public function addHistory($learner, $learnerAnswer, $isCorrect, $timeUsed){
+        if(isset($learner)){
             $learner->history()->attach($this,['answer' => $learnerAnswer ,'time_used' => $timeUsed]);
+            $learnerAttempts = $learner->getTotalAttempts($this->indicator->id);
+            $learner->learningIndicators()->sync([$this->indicator_id => [ 'total_attempts' => $learnerAttempts+1] ], false);
+
+            $stat = $this->statistic()->first();
+            $newTotalAttempts = $stat->total_attempts+1;
+            $stat->average_time_used = (($stat->average_time_used * $stat->total_attempts)+$timeUsed)/$newTotalAttempts;
+            $stat->total_attempts = $newTotalAttempts;
+            if($isCorrect) {
+                $stat->correct_attempts += 1;
+            }
+            $stat->save();
         }
     }
 
     public function updateRating($learner, $isCorrect){   
-        $newRatings = ModuleManager::runProcess('INSTANCE_UPDATER', getenv('ENABLE_INSTANCE_UPDATER_PREPROCESS'), getenv('ENABLE_INSTANCE_UPDATER_POSTPROCESS'), false, $this->id, $learner->id, $isCorrect);
+        $updater = $this->indicator()->first()->compatibleModules()->updater()->active()->latest()->first();
+        if(isset($updater)){
+            $newRatings = ModuleManager::runProcess($updater, $this->id, $learner->id, $isCorrect);
+        }
 
-        if(!$newRatings){
-            $questionRating = $this->statistic->rating;
+        if(!isset($newRatings)){
+            $questionRating = $this->rating;
             $learnerRating = $learner->getRating($this->indicator->id);
+            $learnerAttempts = $learner->getTotalAttempts($this->indicator->id);
             $score = $isCorrect ? 1 : 0;
     
-            $questionUncertaincy = 1/(1+(0.05*$this->statistic->total_attempts));
-            $learnerUncertaincy = 1/(1+(0.05*$learner->indicators()->where('id',$this->indicator_id)->first()->total_attempts));
+            $questionUncertaincy = 1/(1+(0.05*$this->totalAttempts));
+            $learnerUncertaincy = 1/(1+(0.05*$learnerAttempts));
 
             $expectedScore = 1/(1+exp(-($learnerRating-$questionRating)));
 
@@ -106,22 +273,20 @@ class QuestionInstance extends Model
             $newRatings['learnerRating'] = $newLearnerRating;
         }
 
-        $questionStat = $this->statistic;
-        $questionStat->rating  = $customRating['questionRating'];
+        $questionStat = $this->statistic()->first();
+        $questionStat->rating  = $newRatings['questionRating'];
         $questionStat->save();
-        $learner->indicators()->sync([$this->indicator_id => [ 'rating' => $customRating['learnerRating']] ], false);
-
-        //TODO: UPDATE INDICATOR STAT
+        $learner->learningIndicators()->sync([$this->indicator_id => [ 'rating' => $newRatings['learnerRating']] ], false);
     }
 
     public function upvote(){
-        $stat = $this->statistic;
+        $stat = $this->statistic()->first();
         $stat->upvotes += 1;
         $stat->save();
     }
 
     public function downvote(){
-        $stat = $this->statistic;
+        $stat = $this->statistic()->first();
         $stat->downvotes += 1;
         $stat->save();
     }

@@ -19,6 +19,7 @@ class CreateQuestionInstancesTable extends Migration
             $table->json('question');
             $table->longText('answer');
             $table->json('solution');
+            $table->foreignId('generator_id')->constrained('modules')->onDelete('cascade');
             $table->timestamps();
         });
     }

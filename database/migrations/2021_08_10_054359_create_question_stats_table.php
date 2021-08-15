@@ -16,7 +16,7 @@ class CreateQuestionStatsTable extends Migration
         Schema::create('question_stats', function (Blueprint $table) {
             $table->id();
             $table->foreignId('question_id')->constrained('question_instances')->onDelete('cascade');
-            $table->string('initial_level')->nullable();
+            $table->integer('initial_level')->nullable();
             $table->double('rating')->default(0);
             $table->integer('upvotes')->default(0);
             $table->integer('downvotes')->default(0);
