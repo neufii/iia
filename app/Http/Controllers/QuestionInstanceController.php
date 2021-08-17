@@ -7,15 +7,17 @@ use App\Models\QuestionInstance;
 use App\Models\Learner;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Response;
 
 class QuestionInstanceController extends Controller
 {
-    public function getQuestion($indicatorId, Request $request){
+    public function getQuestion($indicatorId, Request $request)
+    {
         $params = [
-            'excludeHistory' => filter_var($request->input('excludeHistory'), FILTER_VALIDATE_BOOLEAN),
+            'excludeHistory' => filter_var($request->input('exclude_history'), FILTER_VALIDATE_BOOLEAN),
             'preferredLevel' => $request->input('level'),
-            'userId' => $request->input('userId')
+            'userId' => $request->input('user_id')
         ];
 
         $learner = Learner::where('user_id',$params['userId'])->first();
@@ -54,26 +56,31 @@ class QuestionInstanceController extends Controller
 
     }
 
-    public function submit(Request $request, $id){
-        $validatedRequest = $request->validate([
+    public function submit(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
             'user_id' => ['required','integer'],
             'answer' => ['required', 'string'],
             'time_used' => ['required', 'integer'],
-        ]);
+         ]);
+      
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
-        $learner = Learner::where('user_id',$validatedRequest['user_id'])->first();
+        $learner = Learner::where('user_id',$request['user_id'])->first();
         if(!isset($learner)){
             return Response::json([
                 'status' => 'not found',
-                'message' => 'Learner with user id '.$validatedRequest['user_id'].' not found',
+                'message' => 'Learner with user id '.$request['user_id'].' not found',
             ], 404);
         }
         
         $question = QuestionInstance::findOrFail($id);
 
-        $isCorrect = $question->check($validatedRequest['answer']);
+        $isCorrect = $question->check($request['answer']);
         $question->updateRating($learner, $isCorrect);
-        $question->addHistory($learner, $validatedRequest['answer'],$isCorrect, $validatedRequest['time_used']);
+        $question->addHistory($learner, $request['answer'],$isCorrect, $request['time_used']);
 
         return Response::json([
             'status' => 'completed',
@@ -81,22 +88,27 @@ class QuestionInstanceController extends Controller
             'data' => [
                 'question_id'=> $question->id,
                 'is_correct'=> $isCorrect,
-                'time_used'=> $validatedRequest['time_used'],
+                'time_used'=> $request['time_used'],
                 'question_rating' => $question->rating,
                 'learner_rating' => $learner->getRating($question->indicator()->first()->id)
             ]
         ], 200);
     }
 
-    public function updateFeedback(Request $request, $id){
-        $validatedRequest = $request->validate([
+    public function updateFeedback(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
             'action' => ['required', 'in:upvote,downvote']
-        ]);
+         ]);
+      
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
         $question = QuestionInstance::findOrFail($id);
 
-        if($validatedRequest['action'] == 'upvote') $question->upvote();
-        else if($validatedRequest['action'] == 'downvote') $question->downvote();
+        if($request['action'] == 'upvote') $question->upvote();
+        else if($request['action'] == 'downvote') $question->downvote();
 
         return Response::json([
             'status' => 'completed',
@@ -105,7 +117,8 @@ class QuestionInstanceController extends Controller
         ], 200);
     }
 
-    public function getSolution($id){
+    public function getSolution($id)
+    {
         $question = QuestionInstance::findOrFail($id);
 
         return Response::json([

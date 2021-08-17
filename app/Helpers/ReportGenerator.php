@@ -13,13 +13,20 @@ use App\Modules\ModuleManager;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
 
 class ReportGenerator{
-    public static function evaluateGenerator($indicatorId, $questions = 2000, $threshold = 0.0, $preferredLevel = null, $testGenerator = null){
-        $indicator = Indicator::findOrFail($indicatorId);
-        if(!isset($testGenerator)){
-            $testGenerator = $indicator->compatibleModules()->generator()->active()->latest()->first();
+    public static function evaluateGenerator($generatorId, $numberOfQuestions = 2000, $threshold = 0.0, $preferredLevel = null, $indicatorId = null){
+        $generator = Module::findOrFail($generatorId);
+        if($generator->name != 'generator'){
+            return "a selected module is not a generator";
         }
 
-        echo("Generator Evaluation:\n Generator ID: ".$testGenerator->id."\n");
+        if(!isset($indicatorId)){
+            $indicator = $generator->compatibleIndicators()->first();
+        }
+        else{
+            $indicator = Indicator::findOrFail($indicatorId);
+        }
+
+        echo("Generator Evaluation:\n Generator ID: ".$generator->id."\n");
         echo("Start:\t".date("Y-m-d H:i:s")."\n");
 
         $testQuestionIds = [];
@@ -30,15 +37,15 @@ class ReportGenerator{
 
         $fp = fopen($filename, 'a');
 
-        for($i=0;$i<$questions;$i++){
+        for($i=0;$i<$numberOfQuestions;$i++){
             //prepare question
-            $questionI = QuestionInstance::generate($indicator,$preferredLevel,$testGenerator);
+            $questionI = QuestionInstance::generate($indicator,$preferredLevel,$generator);
             if($i == 0) $firstGeneratedQuestion = $questionI->id;
             $testQuestionIds[] = $questionI->id;
 
-            for($j=0;$j<$questions;$j++){
+            for($j=0;$j<$numberOfQuestions;$j++){
                 //create distance matrix
-                if($j == $questions-1){
+                if($j == $numberOfQuestions-1){
                     fwrite($fp, '0');
                 }
                 else if($i == $j || $i < $j){
@@ -84,7 +91,7 @@ class ReportGenerator{
         fwrite($report, "Generator ID:\t".$testGenerator->id."\n");  
         if($preferredLevel) fwrite($report, "Question Level:\t".$preferredLevel."\n");  
         fwrite($report, "Threshold:\t".$threshold."\n");  
-        fwrite($report, "Total Generated Questions:\t".$questions."\n");
+        fwrite($report, "Total Generated Questions:\t".$numberOfQuestions."\n");
         fwrite($report, "\n==== Result ====\n");
         fwrite($report, "Total Clusters:\t".$output->total_clusters."\n");
         fwrite($report, "Average Questions Per Cluster:\t".$output->average_question_per_clusters."\tStandard Deviation:\t".$output->std."\n");

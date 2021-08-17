@@ -9,7 +9,7 @@ class QuestionStat extends Model
 {
     use HasFactory;
     
-    protected $fillable = ['upvotes', 'downvotes', 'total_attempts', 'correct_attempts', 'average_time_used', 'initial_level', 'rating'];
+    // protected $fillable = ['upvotes', 'downvotes', 'total_attempts', 'correct_attempts', 'average_time_used', 'initial_level', 'rating'];
 
     //relationship
     public function question(){

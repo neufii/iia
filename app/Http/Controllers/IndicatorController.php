@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Indicator;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Response;
 
 class IndicatorController extends Controller
@@ -31,15 +32,19 @@ class IndicatorController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedRequest = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string'],
             'description' => ['nullable', 'string'],
-        ]);
-
+         ]);
+      
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+        
         $indicator = new Indicator();
-        $indicator->name = $validatedRequest['name'];
-        if(isset($validatedRequest['description'])){
-            $indicator->description = $validatedRequest['description'];
+        $indicator->name = $request['name'];
+        if(isset($request['description'])){
+            $indicator->description = $request['description'];
         }
 
         $indicator->save();
@@ -75,15 +80,19 @@ class IndicatorController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $validatedRequest = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string'],
             'description' => ['nullable', 'string'],
-        ]);
+         ]);
+      
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
         $indicator = Indicator::findOrFail($id);
-        $indicator->name = $validatedRequest['name'];
-        if($validatedRequest['description']){
-            $indicator->description = $validatedRequest['description'];
+        $indicator->name = $request['name'];
+        if($request['description']){
+            $indicator->description = $request['description'];
         }
 
         $indicator->save();
@@ -108,7 +117,6 @@ class IndicatorController extends Controller
         return Response::json([
             'status' => 'completed',
             'message' => 'Indicator Deleted',
-            'data' => $deleted,
         ], 200);
     }
 }

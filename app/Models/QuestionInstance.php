@@ -47,8 +47,8 @@ class QuestionInstance extends Model
     }
 
     //function
-    public static function generate($indicator, $preferredLevel=null, $testGenerator = null){
-        $generator = $testGenerator ? $testGenerator : $indicator->compatibleModules()->generator()->active()->latest()->first();
+    public static function generate($indicator, $preferredLevel=null, $preferredGenerator = null){
+        $generator = $preferredGenerator ? $preferredGenerator : $indicator->compatibleModules()->generator()->active()->latest()->first();
         if(isset($generator)){
             $generated_question = ModuleManager::runProcess($generator,$indicator->id, $preferredLevel);
         }
@@ -131,7 +131,7 @@ class QuestionInstance extends Model
                 while($probCorrect<= 0.5 || $probCorrect >= 1){
                     $x = mt_rand()/mt_getrandmax();
                     $y = mt_rand()/mt_getrandmax();
-                    $probCorrect =  sqrt(-2*log($x))*cos(2*pi()*$y)*0.1 + 0.75;
+                    $probCorrect =  sqrt(-2*log($x))*cos(2*pi()*$y)*0.1 + 0.7;
                 }
                 $targetRating = $learner->getRating($indicator->id) - log($probCorrect/(1-$probCorrect));
                 $collection = $query->get();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Learner;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Response;
 
 class LearnerController extends Controller
@@ -31,12 +32,16 @@ class LearnerController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedRequest = $request->validate([
-            'user_id' => ['required', 'integer'],
-        ]);
+        $validator = Validator::make($request->all(), [
+            'user_id' => ['required', 'integer','unique:learners,user_id'],
+         ]);
+      
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
         $learner = new Learner();
-        $learner->user_id = $validatedRequest['user_id'];
+        $learner->user_id = $request['user_id'];
         $learner->save();
 
         return Response::json([
@@ -70,12 +75,16 @@ class LearnerController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $validatedRequest = $request->validate([
-            'user_id' => ['required', 'integer'],
-        ]);
+        $validator = Validator::make($request->all(), [
+            'user_id' => ['required', 'integer','unique:learners,user_id,'.$id],
+         ]);
+      
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
         $learner = Learner::findOrFail($id);
-        $learner->user_id = $validatedRequest['user_id'];
+        $learner->user_id = $request['user_id'];
         $learner->save();
 
         return Response::json([
@@ -98,7 +107,6 @@ class LearnerController extends Controller
         return Response::json([
             'status' => 'completed',
             'message' => 'Learner Deleted',
-            'data' => $deleted,
         ], 200);
     }
 }

@@ -10,7 +10,7 @@ threshold = sys.argv[2]
 X = np.loadtxt(fileName,delimiter=',')
 X = X + X.T - np.diag(np.diag(X))
 
-model = AgglomerativeClustering(affinity='precomputed', distance_threshold=0.7, n_clusters=None, linkage='single').fit(X)
+model = AgglomerativeClustering(affinity='precomputed', distance_threshold=threshold, n_clusters=None, linkage='single').fit(X)
 model = model.fit(X)
 
 unique, counts = np.unique(model.labels_, return_counts=True)

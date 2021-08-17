@@ -32,7 +32,7 @@ Median Questions' Rating:	0
 	4				0					1900-1900			300		300	300.0	0.0
 	no init lv		8727				1900-1900
 	total			8727				1900-1900
-========
+	========
 
 Indicator ID:	2
 Numbers and Operations: Grade 2
@@ -61,5 +61,5 @@ Median Questions' Rating:	0
 	4				0					1900-1900			300		300	300.0	0.0
 	no init lv		4051				1900-1900
 	total			4051				1900-1900
-========
+	========
 

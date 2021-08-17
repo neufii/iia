@@ -14,7 +14,7 @@ class ModulesSeeder extends Seeder
      */
     public function run()
     {
-        //create and update new modules
+        //create new modules
         $generator = new Module();
         $generator->name = 'generator';
         $generator->path = '/Users/neufii/Documents/M.Eng/IIAFramework/app/Modules/Scripts/generator.py';
@@ -42,5 +42,11 @@ class ModulesSeeder extends Seeder
         $solutionDisplay->run_command = 'python3';
         $solutionDisplay->save();
         $solutionDisplay->compatibleIndicators()->sync([1,2]);
+
+        $distanceCalculator = new Module();
+        $distanceCalculator->name = 'distance_calculator';
+        $distanceCalculator->enable_preprocess = true; //run preprocess without a script
+        $distanceCalculator->save();
+        $distanceCalculator->compatibleIndicators()->sync([1,2]);
     }
 }
