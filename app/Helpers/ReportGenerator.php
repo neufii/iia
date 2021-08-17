@@ -8,7 +8,7 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 use App\Models\QuestionInstance;
 use App\Models\Indicator;
 use App\Models\Learner;
-use App\Modules\ModuleManager;
+use App\Models\Module;
 
 use Spatie\TemporaryDirectory\TemporaryDirectory;
 
@@ -88,7 +88,7 @@ class ReportGenerator{
         $report = fopen(__DIR__."/Reports/GeneratorReport/".$reportName, 'a');
         fwrite($report, "Report Date:\t".date("Y-m-d H:i:s")."\n");
         fwrite($report, "Indicator ID:\t".$indicator->id."\n");  
-        fwrite($report, "Generator ID:\t".$testGenerator->id."\n");  
+        fwrite($report, "Generator ID:\t".$generator->id."\n");  
         if($preferredLevel) fwrite($report, "Question Level:\t".$preferredLevel."\n");  
         fwrite($report, "Threshold:\t".$threshold."\n");  
         fwrite($report, "Total Generated Questions:\t".$numberOfQuestions."\n");

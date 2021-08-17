@@ -5,7 +5,7 @@ import json
 import sys
 
 fileName = sys.argv[1]
-threshold = sys.argv[2]
+threshold = float(sys.argv[2])
 
 X = np.loadtxt(fileName,delimiter=',')
 X = X + X.T - np.diag(np.diag(X))
