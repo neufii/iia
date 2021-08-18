@@ -15,28 +15,31 @@ class QuestionInstanceController extends Controller
     public function getQuestion($indicatorId, Request $request)
     {
         $params = [
-            'excludeHistory' => filter_var($request->input('exclude_history'), FILTER_VALIDATE_BOOLEAN),
+            'excludeHistory' => filter_var($request->input('exclude_history',true), FILTER_VALIDATE_BOOLEAN),
             'preferredLevel' => $request->input('level'),
             'userId' => $request->input('user_id')
         ];
 
         $learner = Learner::where('user_id',$params['userId'])->first();
         if(!isset($learner)){
-            return Response::json([
-                'status' => 'not found',
-                'message' => 'Learner with user id '.$params['userId'].' not found',
-            ], 404);
+            return response()->json(['message' => 'Learner with user id '.$params['userId'].' not found'], 404);
         }
+
         $indicator = Indicator::findOrFail($indicatorId);
 
         //check compatible question
         $instanceData = QuestionInstance::selectQuestion($learner, $indicator, $params['excludeHistory'], $params['preferredLevel']);
 
         $instance=$instanceData['questionInstance'];
-        if(!$instance){
+        if(!isset($instance)){
+            //nothing return from item bank
             //if no level preference, check current level of a learner
             $targetLevel = $instanceData['targetLevel'];
             $instance = QuestionInstance::generate($indicator,$targetLevel);
+        }
+        if(!isset($instance)){
+            //nothing return from generator
+            return response()->json(['message' => 'Cannot Generate Question Instance'], 500);
         }
 
         //generate displayable question
@@ -48,6 +51,7 @@ class QuestionInstanceController extends Controller
             'data' => [
                 'instance'=> [
                     'id'=> $instance->id,
+                    'indicator'=> $instance->indicator,
                     'statistic' => $instance->statistic,
                 ], 
                 'script'=>$script,
@@ -70,10 +74,7 @@ class QuestionInstanceController extends Controller
 
         $learner = Learner::where('user_id',$request['user_id'])->first();
         if(!isset($learner)){
-            return Response::json([
-                'status' => 'not found',
-                'message' => 'Learner with user id '.$request['user_id'].' not found',
-            ], 404);
+            return response()->json(['message' => 'Learner with user id '.$request['user_id'].' not found'], 404);
         }
         
         $question = QuestionInstance::findOrFail($id);

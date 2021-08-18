@@ -17,10 +17,17 @@ class ModulesSeeder extends Seeder
         //create new modules
         $generator = new Module();
         $generator->name = 'generator';
-        $generator->path = '/Users/neufii/Documents/M.Eng/IIAFramework/app/Modules/Scripts/generator.py';
+        $generator->path = '/Users/neufii/Documents/M.Eng/IIAFramework/app/Modules/Scripts/generator1.py';
         $generator->run_command = 'python3';
         $generator->save();
-        $generator->compatibleIndicators()->sync([1,2]);
+        $generator->compatibleIndicators()->sync([1]);
+
+        $generator = new Module();
+        $generator->name = 'generator';
+        $generator->path = '/Users/neufii/Documents/M.Eng/IIAFramework/app/Modules/Scripts/generator2.py';
+        $generator->run_command = 'python3';
+        $generator->save();
+        $generator->compatibleIndicators()->sync([2]);
 
         $checker = new Module();
         $checker->name = 'checker';

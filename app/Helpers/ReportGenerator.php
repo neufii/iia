@@ -6,6 +6,7 @@ use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 use App\Models\QuestionInstance;
+use App\Models\QuestionStat;
 use App\Models\Indicator;
 use App\Models\Learner;
 use App\Models\Module;
@@ -150,7 +151,7 @@ class ReportGenerator{
             }
             $stdDev = (float)sqrt($stdDev/$totalRating);
 
-            fwrite($report, "\nActive Generators ID:\t".implode(",", $activeGenerators->pluck('id')->toArray())."\n");
+            fwrite($report, "\nTotal Active Generators ID:\t".$activeGenerators->count()."\n");
             fwrite($report, "Total Questions:\t".$totalQuestions."\n");
             fwrite($report, "Max Questions' Rating:\t".$ratings->max()."\n");
             fwrite($report, "Min Questions' Rating:\t".$ratings->min()."\n");
@@ -169,23 +170,61 @@ class ReportGenerator{
                 $avgDownvotes = $questions->pluck('statistic.downvotes')->avg();
                 fwrite($report, "\tAverage Upvotes:\t".$avgUpvotes."\n");
                 fwrite($report, "\tAverage Downvotes:\t".$avgDownvotes."\n");
-                fwrite($report, "\tlevel\t\t\ttotal questions\t\texpected rating\t\tmin\t\tmax\t\taverage\t\tSD\n");
+                
+                $questionIds = $indicator->questions()->pluck('id');
+                fwrite($report, "\tlevel\t\t\ttotal questions\t\texpected rating\t\tmin\t\t\tmax\t\t\taverage\t\tSD\n");
                 for($i=0;$i<4;$i++){
                     $levelQuestions = $indicator->questions()->where('generator_id',$generator->id)->whereHas('statistic',function($query) use($i){
                         return $query->where('initial_level',$i+1);
                     })->with('statistic')->get();
-                    fwrite($report, "\t".($i+1)."\t\t\t\t".$levelQuestions->count()."\t\t\t\t\t1900-1900\t\t\t300\t\t300\t300.0\t0.0"."\n");
+                    $avgRating = $levelQuestions->average('rating');
+                    $stdDev = 0;
+                    foreach($levelQuestions->pluck('rating') as $rating){
+                        $stdDev += pow(($rating - $avgRating), 2);
+                    }
+                    $stdDev = (float)sqrt($stdDev/$totalRating);
+
+                    $median = QuestionStat::whereIn('question_id',$questionIds)->get()->median('rating');
+                    if($i==0){
+                        $min = QuestionStat::whereIn('question_id',$questionIds)->where('rating','<=',$median)->get()->min('rating');
+                        if(!isset($min)) $min = 0.0;   
+                        
+                        $max = QuestionStat::whereIn('question_id',$questionIds)->where('rating','<=',$median)->get()->median('rating');
+                        if(!isset($max)) $max = 0.0;
+                    }
+                    else if($i == 1){
+                        $min = QuestionStat::whereIn('question_id',$questionIds)->where('rating','<=',$median)->get()->median('rating');
+                        if(!isset($min)) $min = 0.0;
+                        $max = QuestionStat::whereIn('question_id',$questionIds)->get()->median('rating');
+                        if(!isset($max)) $max = 0.0;
+                    }
+                    else if($i == 2){
+                        $min = QuestionStat::whereIn('question_id',$questionIds)->get()->median('rating');
+                        if(!isset($min)) $min = 0.0;
+                        $max = QuestionStat::whereIn('question_id',$questionIds)->where('rating','>=',$median)->get()->median('rating');
+                        if(!isset($max)) $max = 0.0;
+                    }
+                    else{
+                        $min = QuestionStat::whereIn('question_id',$questionIds)->where('rating','>=',$median)->get()->median('rating');
+                        if(!isset($min)) $min = 0.0;
+                        $max = QuestionStat::whereIn('question_id',$questionIds)->where('rating','<=',$median)->get()->max('rating');
+                        if(!isset($max)) $max = 0.0;
+                    }
+                    fwrite($report, "\t".($i+1)."\t\t\t\t".$levelQuestions->count()."\t\t\t\t\t".str_pad($min."-".$max,9)."\t\t\t".
+                        str_pad($levelQuestions->min('rating'),5)."\t\t".str_pad($levelQuestions->max('rating'),5)."\t\t".
+                        str_pad($avgRating,5)."\t\t".$stdDev."\n");
                 }
                 $noLvQuestions = $indicator->questions()->where('generator_id',$generator->id)->whereHas('statistic',function($query){
                     return $query->whereNull('initial_level');
                 })->get();
-                fwrite($report, "\tno init lv\t\t".$noLvQuestions->count()."\t\t\t\t1900-1900"."\n");
-                fwrite($report, "\ttotal\t\t\t".$questions->count()."\t\t\t\t1900-1900"."\n");
+                fwrite($report, "\tno init lv\t\t".$noLvQuestions->count()."\n");
+                fwrite($report, "\ttotal\t\t\t".$questions->count()."\n");
 
-                unset($questions,$avgUpvotes,$avgDownvotes,$generator,$levelQuestions);
+                unset($questions,$avgUpvotes,$avgDownvotes,$generator,$questionIds,$levelQuestions,$median,$min,$max,$avgRating,$stdDev,$noLvQuestions);
                 fwrite($report, "\t========\n\n");  
             }
-            fwrite($report, "\n================\n\n");  
+            fwrite($report, "\n================\n\n"); 
         }
+        return("System Report Generated"); 
     }
 }
