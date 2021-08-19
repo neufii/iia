@@ -15,7 +15,7 @@ class QuestionInstanceController extends Controller
     public function getQuestion($indicatorId, Request $request)
     {
         $params = [
-            'excludeHistory' => filter_var($request->input('exclude_history',true), FILTER_VALIDATE_BOOLEAN),
+            'includeHistory' => filter_var($request->input('indclude_history',false), FILTER_VALIDATE_BOOLEAN),
             'preferredLevel' => $request->input('level'),
             'userId' => $request->input('user_id')
         ];
@@ -28,7 +28,7 @@ class QuestionInstanceController extends Controller
         $indicator = Indicator::findOrFail($indicatorId);
 
         //check compatible question
-        $instanceData = QuestionInstance::selectQuestion($learner, $indicator, $params['excludeHistory'], $params['preferredLevel']);
+        $instanceData = QuestionInstance::selectQuestion($learner, $indicator, $params['includeHistory'], $params['preferredLevel']);
 
         $instance=$instanceData['questionInstance'];
         if(!isset($instance)){

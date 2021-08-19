@@ -74,19 +74,19 @@ class QuestionInstance extends Model
         return $question;
     }
 
-    public static function selectQuestion($learner, $indicator, $excludeHistory=true, $preferredLevel=null){
+    public static function selectQuestion($learner, $indicator, $includeHistory=false, $preferredLevel=null){
         $selector = $indicator->compatibleModules()->selector()->active()->latest()->first();
         if(isset($selector)){
-            $customInstance = ModuleManager::runProcess($selector, $learner->id, $indicator->id, $excludeHistory, $preferredLevel);
+            $customInstance = ModuleManager::runProcess($selector, $learner->id, $indicator->id, $includeHistory, $preferredLevel);
         }
         
         if(isset($customInstance)){
-            $selectedInstance = $customInstance['questionInstanceId'] ? QuestionInstance::find($customInstance['questionInstanceId']) : null;
+            $selectedInstance = $customInstance['questionInstanceId'] ? QuestionInstance::findOrFail($customInstance['questionInstanceId']) : null;
             $targetLevel = $customInstance['targetLevel'] ? $customInstance['targetLevel'] : null;
         }
         else{
             //no selector or nothing return from selector, use default selecting algorithm
-            if($excludeHistory){
+            if(!$includeHistory){
                 $history = $learner->history()->where('indicator_id',$indicator->id)->pluck('question_id');
             }
             else{

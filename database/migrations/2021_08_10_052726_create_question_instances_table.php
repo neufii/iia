@@ -17,7 +17,7 @@ class CreateQuestionInstancesTable extends Migration
             $table->id();
             $table->foreignId('indicator_id')->nullable()->constrained('indicators')->onDelete('set null');
             $table->json('question');
-            $table->longText('answer');
+            $table->json('answer');
             $table->json('solution');
             $table->foreignId('generator_id')->constrained('modules')->onDelete('cascade');
             $table->timestamps();

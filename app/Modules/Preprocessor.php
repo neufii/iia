@@ -6,7 +6,7 @@ use App\Models\QuestionInstance;
 
 class Preprocessor
 {
-    public static function selector($indicatorId, $excludeHistory, $preferredLevel){
+    public static function selector($indicatorId, $includeHistory, $preferredLevel){
     }
 
     public static function generator($indicatorId, $targetLevel){
