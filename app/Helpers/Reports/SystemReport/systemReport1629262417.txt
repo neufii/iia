@@ -1,0 +1,73 @@
+Report Date:	2021-08-18 04:53:37
+==== Overall ====
+Total Indicators:	2
+Total Learners:	1
+Total Questions:	2
+
+==== Indicators ====
+Indicator ID:	1
+Numbers and Operations: Grade 1
+วิเคราะห์และหาคำตอบของโจทย์ปัญหาและโจทย์ปัญหาระคนของจำนวนนับไม่เกินหนึ่งร้อยและศูนย์ พร้อมทั้งตระหนักถึงความสมเหตุสมผลของคำตอบ
+Total Learners:	1
+Max Learners' Rating:	0
+Min Learners' Rating:	0
+Average Learners' Rating:	0	 Standard Deviation:	0
+Median Learners' Rating:	0
+
+Total Active Generators ID:	1
+Total Questions:	1
+Max Questions' Rating:	0
+Min Questions' Rating:	0
+Average Questions' Rating:	0	 Standard Deviation:	0
+Median Questions' Rating:	0
+
+	==== Active Generator ====
+	Generator Id:	1
+	**new question instances will be generated from this generator**
+	Average Upvotes:	0
+	Average Downvotes:	0
+	level			total questions		expected rating		min			max			average		SD
+	1				0					0-0      			     		     		     		0
+	2				1					0-0      			0    		0    		0    		0
+	3				0					0-0      			     		     		     		0
+	4				0					0-0      			     		     		     		0
+	no init lv		0
+	total			1
+	========
+
+
+================
+
+Indicator ID:	2
+Numbers and Operations: Grade 2
+วิเคราะห์และหาคำตอบของโจทย์ปัญหาและโจทย์ปัญหาระคนของจำนวนนับไม่เกินหนึ่งพันและศูนย์ พร้อมทั้งตระหนักถึงความสมเหตุสมผลของคำตอบ
+Total Learners:	1
+Max Learners' Rating:	0
+Min Learners' Rating:	0
+Average Learners' Rating:	0	 Standard Deviation:	0
+Median Learners' Rating:	0
+
+Total Active Generators ID:	1
+Total Questions:	1
+Max Questions' Rating:	0
+Min Questions' Rating:	0
+Average Questions' Rating:	0	 Standard Deviation:	0
+Median Questions' Rating:	0
+
+	==== Active Generator ====
+	Generator Id:	2
+	**new question instances will be generated from this generator**
+	Average Upvotes:	0
+	Average Downvotes:	0
+	level			total questions		expected rating		min			max			average		SD
+	1				0					0-0      			     		     		     		0
+	2				1					0-0      			0    		0    		0    		0
+	3				0					0-0      			     		     		     		0
+	4				0					0-0      			     		     		     		0
+	no init lv		0
+	total			1
+	========
+
+
+================
+

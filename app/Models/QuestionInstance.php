@@ -33,7 +33,19 @@ class QuestionInstance extends Model
     //scope
     public function scopeRatingBetween($query,$min,$max){
         return $query->whereHas('statistic',function ($q) use ($min, $max){
-            return $q->where('rating','>=',$min)->where('rating','<=',$max);
+            return $q->where('rating','>=',$min)->where('rating','<',$max);
+        });
+    }
+
+    public function scopeRatingGreaterOrEqaul($query,$min){
+        return $query->whereHas('statistic',function ($q) use ($min){
+            return $q->where('rating','>=',$min);
+        });
+    }
+
+    public function scopeRatingLessThan($query,$max){
+        return $query->whereHas('statistic',function ($q) use ($max){
+            return $q->where('rating','<',$max);
         });
     }
 
@@ -96,18 +108,16 @@ class QuestionInstance extends Model
             //get only question from active generators
             $generatorsId = $indicator->compatibleModules()->generator()->active()->get()->pluck('id');
             $query = QuestionInstance::where('indicator_id',$indicator->id)->whereNotIn('id',$history)->whereIn('generator_id',$generatorsId);
-            $allQuestionIds = QuestionInstance::where('indicator_id',$indicator->id)->whereIn('generator_id',$generatorsId)->pluck('id');
+            $allQuestionIds = QuestionInstance::where('indicator_id',$indicator->id)->pluck('id');
 
             if(isset($preferredLevel)){
                 $median = QuestionStat::whereIn('question_id',$allQuestionIds)->get()->median('rating');
                 if(!isset($median)) $median = 0.0;
                 switch($preferredLevel){
                     case 1:{
-                        $min = QuestionStat::whereIn('question_id',$allQuestionIds)->min('rating');
                         $max = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','<',$median)->get()->median('rating');
-                        if(!isset($min)) $min = 0.0;
                         if(!isset($max)) $max = 0.0;
-                        $query = $query->ratingBetween($min,$max);
+                        $query = $query->ratingLessThan($max);
                         break;
                     }
                     case 2:{
@@ -123,11 +133,10 @@ class QuestionInstance extends Model
                         break;
                     }
                     case 4:{
-                        $max = QuestionStat::whereIn('question_id',$allQuestionIds)->max('rating');
                         $min = QuestionStat::whereIn('question_id',$allQuestionIds)->where('rating','>',$median)->get()->median('rating');
                         if(!isset($min)) $min = 0.0;
                         if(!isset($max)) $max = 0.0;
-                        $query = $query->ratingBetween($min,$max);
+                        $query = $query->ratingGreaterOrEqaul($min);
                         break;
                     }
                 }
@@ -157,23 +166,23 @@ class QuestionInstance extends Model
                     })->with('statistic')->get()->sortByDesc('statistic.rating')->first();
 
                 if(!isset($upperInstance)){
-                    $selectedInstance = $lowerInstance;
+                    $targetInstance = $lowerInstance;
                 }
                 else if(!isset($lowerInstance)){
-                    $selectedInstance = $upperInstance;
+                    $targetInstance = $upperInstance;
                 }
                 else{
-                    $selectedInstance = abs($upperInstance->rating - $targetRating) < abs($lowerInstance->rating - $targetRating) ? $upperInstance : $lowerInstance;
+                    $targetInstance = abs($upperInstance->rating - $targetRating) < abs($lowerInstance->rating - $targetRating) ? $upperInstance : $lowerInstance;
                 }
 
-                if(isset($selectedInstance)){
-                    $selectedInstance = $query->whereHas('statistic',function($q) use($selectedInstance){
-                        $q->where('rating',$selectedInstance->rating);
+                if(isset($targetInstance)){
+                    $selectedInstance = $query->whereHas('statistic',function($q) use($targetInstance){
+                        $q->where('rating',$targetInstance->rating);
                     })->inRandomOrder()->first();
                     $targetLevel = null;
                 }
 
-                else{
+                if(!isset($selectedInstance)){
                     //no instance selected, find target level for generator.
                     if(empty($allQuestionIds->toArray()) || !isset($allQuestionIds)){
                         //no question in question bank, generate level 2 question
