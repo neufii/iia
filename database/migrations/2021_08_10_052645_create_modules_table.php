@@ -16,10 +16,8 @@ class CreateModulesTable extends Migration
         Schema::create('modules', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('path')->nullable();
-            $table->string('run_command')->nullable();
-            $table->boolean('enable_preprocess')->default(false);
-            $table->boolean('enable_postprocess')->default(false);
+            $table->string('path');
+            $table->string('run_command');
             $table->string('is_active')->default(true);
             $table->timestamps();
         });

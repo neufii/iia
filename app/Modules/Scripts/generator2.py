@@ -192,7 +192,7 @@ for idx, word in enumerate(prob):
 
 data = {}
 data['question'] = json.dumps(blocks)
-data['answer'] = ans
+data['answer'] = json.dumps(ans)
 data['solution'] = json.dumps({"0":str(ex[0])+str(show_ex)+str(ex[2])+'='+str(ans)})
 data['level'] = targetLevel
 

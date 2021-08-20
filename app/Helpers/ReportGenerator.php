@@ -14,7 +14,7 @@ use App\Models\Module;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
 
 class ReportGenerator{
-    public static function evaluateGenerator($generatorId, $numberOfQuestions = 2000, $threshold = 0.0, $preferredLevel = null, $indicatorId = null){
+    public static function evaluateGenerator($generatorId, $numberOfQuestions = 2000, $threshold = 0.5, $preferredLevel = null, $indicatorId = null){
         $generator = Module::findOrFail($generatorId);
         if($generator->name != 'generator'){
             return "a selected module is not a generator";
@@ -88,8 +88,8 @@ class ReportGenerator{
         $reportName = "generatorReport".time().".txt";
         $report = fopen(__DIR__."/Reports/GeneratorReport/".$reportName, 'a');
         fwrite($report, "Report Date:\t".date("Y-m-d H:i:s")."\n");
-        fwrite($report, "Indicator ID:\t".$indicator->id."\n");  
         fwrite($report, "Generator ID:\t".$generator->id."\n");  
+        fwrite($report, "Indicator ID:\t".$indicator->id."\n");  
         if($preferredLevel) fwrite($report, "Question Level:\t".$preferredLevel."\n");  
         fwrite($report, "Threshold:\t".$threshold."\n");  
         fwrite($report, "Total Generated Questions:\t".$numberOfQuestions."\n");
@@ -97,13 +97,13 @@ class ReportGenerator{
         fwrite($report, "Total Clusters:\t".$output->total_clusters."\n");
         fwrite($report, "Average Questions Per Cluster:\t".$output->average_question_per_clusters."\tStandard Deviation:\t".$output->std."\n");
         fwrite($report, "Total Questions in Largest Cluster:\t".$output->questions_in_largest_cluster."\n");
-        fwrite($report, "Sample Question Instance in Largest Cluster:\t".implode(", ",$ids)."\n");
+        fwrite($report, "Sample Question Instances' ID in Largest Cluster:\t".implode(", ",$ids)."\n");
         fclose($report);
 
         return $output;
     }
 
-    public static function systemReport(){
+    public static function evaluateSystem(){
         $reportName = "systemReport".time().".txt";
         $report = fopen(__DIR__."/Reports/SystemReport/".$reportName, 'a');
 

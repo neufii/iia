@@ -97,6 +97,8 @@ class QuestionInstance extends Model
             $targetLevel = $customInstance['targetLevel'] ? $customInstance['targetLevel'] : null;
         }
         else{
+            $selectedInstance = null;
+
             //no selector or nothing return from selector, use default selecting algorithm
             if(!$includeHistory){
                 $history = $learner->history()->where('indicator_id',$indicator->id)->pluck('question_id');

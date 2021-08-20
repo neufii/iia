@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Module;
 
-class ModulesSeeder extends Seeder
+class ModuleSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -52,7 +52,8 @@ class ModulesSeeder extends Seeder
 
         $distanceCalculator = new Module();
         $distanceCalculator->name = 'distance_calculator';
-        $distanceCalculator->enable_preprocess = true; //run preprocess without a script
+        $solutionDisplay->path = '/Users/neufii/Documents/M.Eng/IIAFramework/app/Modules/Scripts/distanceCalculator.py';
+        $distanceCalculator->run_command = 'python3';
         $distanceCalculator->save();
         $distanceCalculator->compatibleIndicators()->sync([1,2]);
     }
